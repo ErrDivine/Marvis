@@ -1,0 +1,209 @@
+\documentclass{article}
+\usepackage{geometry}
+% \geometry{paperwidth=230mm, paperheight=297mm, textwidth=140mm, textheight=230mm}
+
+\title{Integrating AI into Operating Systems: an Overview}
+\author{Sun Shuo, Chenyu Tong, Houpu Yu}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language models have recently demonstrated great capability of solving complex natural language processing
+tasks, and the numerous other machine learning techniques showed potential of enhancing basic operating system 
+functionalities. The great power of LLMs and other machine learning methods have led to a series of innovations 
+in operating system designs. This overview provides a brief examination of AI OS concepts and developments, 
+covering the conceptual frameworks, concrete architectures, and the various contexts from cloud to edge where an 
+AI-enhanced OS could be applied. We will discuss how LLMs augment traditional OS functions, the technical challenges 
+in building such systems, and future directions toward modular, hardware-fused intelligent operating systems, as well 
+as shortcomes and problems in current AI OS designs.
+\end{abstract}
+
+\section{Introduction}
+The integration of artificial intelligence (AI) into operating systems (OSes) is reshaping both the design goals and the implementation strategies of systems software. On the one hand, AI techniques—ranging from lightweight prediction models to large language models (LLMs)—promise to improve classical OS concerns such as scheduling, memory management, and storage I/O. On the other hand, emerging AI workloads demand new OS abstractions and control planes that better accommodate heterogeneous accelerators, dynamic workloads, and data-driven decision loops across cloud and edge. Recent surveys highlight this bidirectional relationship: AI can enhance OS performance, security, and efficiency, while OS innovations enable more effective deployment of AI applications \cite{zhang2024systematic}. % :contentReference[oaicite:0]{index=0}
+
+A notable trend in current literature is the growth of work coupling LLMs with OSes. A systematic review classifies research across \emph{AI for OS} and \emph{OS for AI}, and explicitly tracks a rapid rise of publications on ``LLM as OS'' and related topics since 2023 \cite{zhang2024systematic}. % :contentReference[oaicite:1]{index=1} 
+In parallel, position papers and systems research advocate rethinking OS structure towards disaggregation and service orientation, with machine learning (ML) deeply embedded in resource management \cite{liu2021serviceos}. % :contentReference[oaicite:2]{index=2}
+
+This overview synthesizes these developments and organizes them into (i) conceptual frameworks that inspire AI-augmented OS design, (ii) implemented architectures that prototype concrete mechanisms, (iii) synergies between AI and core OS functions, and (iv) open challenges and future directions. We draw exclusively on the provided references, which collectively span surveys \cite{zhang2024systematic}, architectural visions \cite{liu2021serviceos}, and systems that bring ML and LLMs into the OS stack \cite{kamath2024llamas,he2024peros,packer2023memgpt,hao2020linnos,bateni2020neuos,goodarzy2021smartos}.
+
+\section{Background}
+Classical OSes were engineered around monolithic or microkernel designs and around a single-machine abstraction. As software increasingly runs over distributed and heterogeneous resources—cloud data centers, edge servers, personal devices, and IoT nodes—the control plane must adapt to frequent changes in hardware, APIs, and workload patterns \cite{liu2021serviceos}. % :contentReference[oaicite:3]{index=3} 
+ServiceOS argues that monolithic structures hinder such adaptation: resource management remains tightly coupled and inflexible, particularly for distributed resources \cite{liu2021serviceos}. % :contentReference[oaicite:4]{index=4}
+
+In response, the systems community has embraced decoupling and service orientation. The ServiceOS vision crystallizes three principles: \emph{resource disaggregation}, \emph{service-oriented resource provisioning}, and \emph{learning-based allocation and scheduling} \cite{liu2021serviceos}. % :contentReference[oaicite:5]{index=5} 
+Disaggregation allows compute, memory, storage, and accelerators to evolve independently and be orchestrated over high-bandwidth, low-latency fabrics; memory can be decoupled along local/remote and physical/virtual dimensions, with RDMA-based control/data channels supporting remote access \cite{liu2021serviceos}. % :contentReference[oaicite:6]{index=6} % :contentReference[oaicite:7]{index=7}
+Service-oriented provisioning leverages containers, microservices, and FaaS to rapidly instantiate functions and reconfigure resources, while navigating security and isolation trade-offs relative to VMs \cite{liu2021serviceos}. % :contentReference[oaicite:8]{index=8} % :contentReference[oaicite:9]{index=9} 
+At the same time, the vision acknowledges practical challenges—from GPU virtualization intricacies to container networking overheads—that must be engineered around \cite{liu2021serviceos}. % :contentReference[oaicite:10]{index=10} % :contentReference[oaicite:11]{index=11}
+
+AI-driven operating systems also intersect with human factors and personalization. SmartOS shows that user preferences vary over time and that OS policies like the Linux Completely Fair Scheduler may not align with what the user currently values. A reinforcement learning (RL) layer can learn user intent and adjust resource allocations accordingly \cite{goodarzy2021smartos}. % :contentReference[oaicite:12]{index=12} % :contentReference[oaicite:13]{index=13} 
+Survey evidence similarly emphasizes how AI techniques are being applied to OS tuning and security, and points to LibOS paradigms and LLM-driven interfaces as promising building blocks for intelligent OSes \cite{zhang2024systematic}. % :contentReference[oaicite:14]{index=14} % :contentReference[oaicite:15]{index=15}
+
+\section{Conceptual Frameworks}
+\paragraph{ServiceOS and the service-orientation of resources.}
+ServiceOS proposes to expose all resources as services and to rely on learning-based mechanisms to schedule and provision them dynamically \cite{liu2021serviceos}. The argument is that modular, composable services ease evolution and enable ML to tune allocations as workload and environment shift. This concept works in tandem with disaggregated hardware and high-speed interconnects, and it anticipates container/VM hybrids and specialized runtimes to balance isolation and agility \cite{liu2021serviceos}. % :contentReference[oaicite:16]{index=16}
+
+\paragraph{LLM-as-OS-module.}
+Rather than replace kernels, recent work embeds LLMs into the control plane to interpret unstructured device descriptions and to synthesize policy decisions. LLaMaS (``Herding LLaMaS'') exemplifies this direction: it leverages an LLM frontend to parse textual device specifications, producing embeddings that help a backend recommend OS tactics (e.g., memory tiering decisions) without hand-crafting device-specific code \cite{kamath2024llamas}. % :contentReference[oaicite:17]{index=17} 
+The systematic review classifies such systems under \emph{LLM AS OS} and stresses their potential to streamline adaptation as hardware evolves \cite{zhang2024systematic}. % :contentReference[oaicite:18]{index=18}
+
+\paragraph{Agentic, cloud-hosted OS mediators.}
+PerOS envisions a personalized, self-adapting OS that uses an LLM-based agent as the user's proxy, spanning OS, filesystem, Git, web, and cloud tools. The agent translates high-level natural language tasks into sequences of tool invocations, maintains task-level memory, and iteratively refines plans based on feedback \cite{he2024peros}. % :contentReference[oaicite:19]{index=19} % :contentReference[oaicite:20]{index=20} 
+A declarative interface exposes capabilities (e.g., file operations, browsing, coding) and the agent composes them in response to user goals \cite{he2024peros}. % :contentReference[oaicite:21]{index=21}
+
+\paragraph{OS abstractions around LLM memory.}
+MemGPT proposes OS-like memory management for LLMs themselves: a \emph{virtual context manager} swaps relevant state between the narrow working context and a larger external memory, enabling long-lived, multi-session agency while respecting token limits \cite{packer2023memgpt}. % :contentReference[oaicite:22]{index=22} 
+This reframes the OS/AI boundary: not only should OSes manage resources for AI, but OS-like ideas (paging, hierarchies, buffers) can manage AI agents.
+
+\paragraph{Human-centered adaptive OS.}
+SmartOS positions the OS as a learner of user intent, with an RL feedback loop that prioritizes foreground tasks and dynamically tunes CPU, memory, I/O, and network bandwidth \cite{goodarzy2021smartos}. This stands in contrast to static, one-size-fits-all policies and illustrates an end-to-end adaptation path within a commodity OS.
+
+\paragraph{Survey synthesis.}
+The systematic review argues for coupling LLM-driven interfaces with modular OS architectures such as LibOS, highlighting opportunities to personalize, to harden security via AI-based analysis, and to reduce developer effort across the OS lifecycle \cite{zhang2024systematic}. % :contentReference[oaicite:23]{index=23} % :contentReference[oaicite:24]{index=24}
+
+\section{Implemented Architectures}
+\paragraph{Predictive I/O at microsecond scale.}
+LinnOS uses a compact neural network inside the I/O path to predict per-request latency on black-box SSDs, allowing the OS to detect problematic requests early and steer around slow paths. A compressed model runs in 4--6 microseconds per I/O, minimizing decision overhead while improving predictability and throughput \cite{hao2020linnos}. % :contentReference[oaicite:25]{index=25} 
+Crucially, the design includes misprediction mitigation to avoid harming fast I/O \cite{hao2020linnos}. % :contentReference[oaicite:26]{index=26}
+
+\paragraph{Latency-predictable multi-DNN scheduling.}
+NeuOS targets autonomous systems that run multiple DNNs concurrently under real-time constraints. It introduces a multi-dimensional optimization across model accuracy, DVFS settings, and batch sizes to meet tail-latency SLOs, and implements an interference-aware scheduler to coordinate GPU/CPU resources \cite{bateni2020neuos}. % :contentReference[oaicite:27]{index=27} 
+The result is a systems framework that trades controlled accuracy for predictable latency.
+
+\paragraph{User-adaptive resource control in a commodity OS.}
+SmartOS implements an RL-based controller in Linux that learns what the user values in the moment and shifts allocations across CPU, memory, I/O, and network to meet perceived priorities. The prototype demonstrates that such learning converges rapidly and can improve interactive experiences relative to fixed heuristics \cite{goodarzy2021smartos}. % :contentReference[oaicite:28]{index=28}
+
+\paragraph{LLM module for OS tactics.}
+Herding LLaMaS demonstrates an LLM-assisted OS module that parses textual device specs and maps them to embeddings used by a backend to recommend OS decisions such as memory-tier placements \cite{kamath2024llamas}. % :contentReference[oaicite:29]{index=29} 
+The goal is to reduce engineering overhead when integrating new, rapidly evolving hardware.
+
+\paragraph{Agentic, end-to-end OS proxy.}
+PerOS prototypes an LLM agent that chains OS, code, and cloud tools behind a single declarative interface, persists context across sessions, and iteratively executes high-level tasks for the user \cite{he2024peros}. % :contentReference[oaicite:30]{index=30}
+
+\paragraph{LLM memory as an OS problem.}
+MemGPT presents a running system with paging-like mechanisms for LLM context management, enabling longer-horizon assistive agents \cite{packer2023memgpt}. % :contentReference[oaicite:31]{index=31}
+
+\section{Synergies: AI and core system functions}
+\paragraph{Scheduling and policy learning.}
+RL- or ML-driven scheduling enables the OS to deviate from static heuristics and tailor allocations to user intent or workload phases. SmartOS demonstrates such adaptation in Linux \cite{goodarzy2021smartos}, while the survey catalogues broader uses of AI for OS tuning (scheduling, energy, memory) and identifies a growing body of evidence that learning can outperform global, static policies \cite{zhang2024systematic}. % :contentReference[oaicite:32]{index=32}
+
+\paragraph{Storage and I/O predictability.}
+LinnOS shows that small, carefully engineered models can meet microsecond budgets and yield meaningful control decisions (e.g., bypassing slow SSD paths), translating learned predictions into OS-level actions \cite{hao2020linnos}. % :contentReference[oaicite:33]{index=33}
+
+\paragraph{Memory and accelerator management.}
+Disaggregated memory and accelerator pools complicate placement and migration; the ServiceOS vision addresses this with service exposure and ML-driven orchestration \cite{liu2021serviceos}. % :contentReference[oaicite:34]{index=34} 
+Concurrently, LLM-oriented memory management (MemGPT) applies OS ideas back to AI agents, indicating a two-way transfer of concepts \cite{packer2023memgpt}. % :contentReference[oaicite:35]{index=35}
+
+\paragraph{Security and personalization.}
+The survey argues that LLMs can help enforce policies and detect threats while also personalizing interfaces; however, integrating these capabilities at the OS level raises correctness and safety questions \cite{zhang2024systematic}. % :contentReference[oaicite:36]{index=36} 
+
+\paragraph{Interfaces and orchestration.}
+PerOS and LLaMaS illustrate how LLMs can mediate between high-level intent and low-level system actions. PerOS focuses on multi-tool orchestration and persistent task memory \cite{he2024peros}, whereas LLaMaS uses LLMs as policy advisors based on textual device knowledge \cite{kamath2024llamas}. Together they suggest an ``intent-to-execution'' stack within or adjacent to the OS.
+
+\section{Challenges}
+\paragraph{Structural inertia and kernel integration.}
+ServiceOS critiques monolithic kernels for their difficulty in evolving to distributed, heterogeneous environments \cite{liu2021serviceos}. % :contentReference[oaicite:37]{index=37} 
+Refactoring an existing kernel around services, safe isolation, and ubiquitous virtualization is a long-term endeavor, with practical hurdles in GPU virtualization, container networking, and device service exposure \cite{liu2021serviceos}. % :contentReference[oaicite:38]{index=38} % :contentReference[oaicite:39]{index=39}
+
+\paragraph{Reliability of learned decisions.}
+Learning-generated adaptations that touch low-level functions (interrupts, memory mappings, filesystems) must be highly reliable; inaccurate tuning risks fatal errors \cite{liu2021serviceos}. % :contentReference[oaicite:40]{index=40} 
+Similarly, LLMs may misinterpret specs or hallucinate, so systems like LLaMaS and PerOS should contain guardrails, validation layers, and rollback mechanisms.
+
+\paragraph{Overheads and tight time budgets.}
+AI components must operate within strict latency/throughput envelopes. LinnOS shows the kind of microsecond-scale budgets a model must respect in the I/O path \cite{hao2020linnos}, while NeuOS demonstrates that multi-DNN workloads require interference-aware scheduling and multi-dimensional optimization to meet SLOs \cite{bateni2020neuos}. % :contentReference[oaicite:41]{index=41} % :contentReference[oaicite:42]{index=42}
+
+\paragraph{Privacy, security, and provenance.}
+Agentic OS proxies raise questions about data handling, capability scoping, and provenance of actions. The survey underscores the necessity of secure integration and lightweight algorithms suitable for constrained environments \cite{zhang2024systematic}. % :contentReference[oaicite:43]{index=43}
+
+\paragraph{Developer experience and evolvability.}
+Even with LLM assistance, mapping ambiguous intent to safe, correct system actions is difficult. ServiceOS acknowledges that many techniques remain immature and that building an executable system at scale will require substantial engineering \cite{liu2021serviceos}. % :contentReference[oaicite:44]{index=44}
+
+\section{Shortcomes and future directions}
+Previous works have shown that LLMs and other machine learning techniques can boost OS performance and usability, but progress toward a cohesive \emph{AI-integrated OS} remains incremental. Based on the evidence and prototypes surveyed earlier \cite{zhang2024systematic,liu2021serviceos,hao2020linnos,bateni2020neuos,goodarzy2021smartos,kamath2024llamas,he2024peros,packer2023memgpt}, we summarize the major shortcomes and chart directions that could turn point solutions into a robust platform.
+
+\paragraph{Lack of a data-fluent substrate}
+A consistent pain point is data accessibility. Contemporary AI services often depend on user data that is scattered across siloed applications, each with its own stores, permissions, and APIs. The result is redundant copies, brittle integrations, and a reliance on ad-hoc commercial partnerships to bridge gaps—friction that hinders both developers and users. A future AI-ready OS should expose a \emph{first-class, policy-aware data plane}: system-managed personal and organizational data spaces with uniform access semantics (discover, query, subscribe, mutate), capability-scoped authorization, and auditable provenance. Service-oriented ideas \cite{liu2021serviceos} already encourage factoring resources into independently evolvable services; applying the same discipline to \emph{data}—not just compute and memory—would let agents and system services consume live, consistent views without proliferating private caches. Agentic systems such as PerOS \cite{he2024peros} and memory-centric designs like MemGPT \cite{packer2023memgpt} highlight the need for durable, searchable state beneath LLMs; making that substrate an OS primitive rather than an app-level afterthought is a natural next step.
+
+\paragraph{Ununified information formats and semantics}
+Even when data is accessible, it is often semantically incompatible. Logs, calendars, documents, contacts, tasks, and device telemetry each use divergent schemas that frustrate global reasoning about user behavior, context, and intent. Without a shared semantic layer, cross-application analytics degrade into brittle ETL pipelines. We argue for an OS-level \emph{typed event and entity schema} with versioning and per-field policies. Concretely: define core, extensible types (e.g., \texttt{CalendarEvent}, \texttt{Message}, \texttt{Task}, \texttt{File}, \texttt{DeviceSpec}) and standardize lifecycle signals (created/updated/accessed), privacy labels, and merge/conflict rules. Apps register adapters to map their internal models to these types. Such unification would directly benefit LLM-in-the-loop modules: LLaMaS \cite{kamath2024llamas} shows promise in interpreting textual device specs, but richer, typed metadata would further ground LLM recommendations; SmartOS-style preference learning \cite{goodarzy2021smartos} could incorporate standardized signals to learn across application boundaries.
+
+\paragraph{Fragmented user experience and the absence of intent-centric interfaces}
+Today, each AI application ships its own UI, data model, and command surface. When functionally identical capabilities coexist (e.g., multiple calendar apps), events and actions fragment across silos, leading to duplicated entries, missed reminders, and inconsistent automation. A future OS should provide a \emph{monolithic experience for intents, not for apps}: a unified, system-owned interface where users express goals (``schedule a review with the team next week''), and where multiple providers can fulfill the same capability behind a consistent contract. PerOS’s tool-composition approach \cite{he2024peros} points the way: the OS can expose a declarative \emph{intent registry} (schedule, message, summarize, translate, file-search, code-run) and adjudicate among providers based on policy, context, and user preference. This unifies UX without stifling ecosystem diversity, and it gives LLM agents a stable, auditable surface to act on.
+
+\paragraph{Bridging micro- and macro-models safely}
+Many promising results live at opposite ends of the spectrum: tiny, specialized models in tight loops (e.g., LinnOS’s microsecond-scale I/O predictors \cite{hao2020linnos}) and large, agentic models orchestrating tools (e.g., PerOS \cite{he2024peros}). The gap between these layers is under-specified: how do high-level intents compile into low-level, real-time decisions with safety guarantees? A practical direction is a \emph{tiered control architecture}: (i) kernel/driver micro-models with hard budgets and formally specified fail-safes; (ii) user-space controllers that compose tactics and verify guard conditions; (iii) LLM agents that plan and explain at human timescales, confined by capabilities. NeuOS’s latency-aware optimization \cite{bateni2020neuos} and SmartOS’s human-in-the-loop adaptation \cite{goodarzy2021smartos} offer building blocks for such layering.
+
+\paragraph{Reliability, provenance, and policy compliance for LLM-in-the-loop}
+LLMs can misinterpret specs or hallucinate actions. Systems like LLaMaS \cite{kamath2024llamas} and PerOS \cite{he2024peros} therefore need verifiable grounding. We see three converging requirements: (1) \emph{spec-grounded reasoning}, where model outputs are checked against authoritative artifacts (typed schemas, device capabilities, OS policies); (2) \emph{capability-scoped execution}, where every action flows through least-privilege tokens and yields machine-auditable receipts; and (3) \emph{counterfactual validation}, where candidate plans are simulated against policy engines before execution. The systematic review \cite{zhang2024systematic} emphasizes security and lightweight algorithms for constrained settings; integrating these checks into the OS substrate rather than each application will lower risk and developer burden.
+
+\paragraph{Developer experience and evolvability}
+Even with better data and interfaces, developers face moving targets: evolving accelerators, changing APIs, and shifting user expectations. ServiceOS’s service orientation \cite{liu2021serviceos} helps, but developers also need \emph{OS-hosted scaffolding}: schema registries; policy testbeds; synthetic, privacy-preserving datasets; and standard evaluation harnesses for AI-augmented subsystems (storage, scheduling, networking). Publishing \emph{reproducible benchmarks}—latency/throughput for micro-models \cite{hao2020linnos}, SLO conformance under interference \cite{bateni2020neuos}, preference-tracking stability \cite{goodarzy2021smartos}, agent task success rates \cite{he2024peros,packer2023memgpt}—will turn one-off demos into comparable progress.
+
+\paragraph{A concrete roadmap}
+\emph{Near term:} (i) introduce a system data plane with capability-scoped APIs and typed schemas; (ii) standardize an intent registry and provider contracts; (iii) pilot micro-models in latency-critical paths (I/O, scheduling) with verifiable fallbacks \cite{hao2020linnos,bateni2020neuos}.  
+\emph{Mid term:} (iv) integrate LLM agents as first-class orchestrators confined by the OS (PerOS-style) \cite{he2024peros}; (v) adopt spec-grounded validation for LLM suggestions (LLaMaS-style) \cite{kamath2024llamas}; (vi) extend SmartOS-like preference learning using unified signals \cite{goodarzy2021smartos}.  
+\emph{Long term:} (vii) co-design with disaggregated hardware and remote memory/services \cite{liu2021serviceos}; (viii) elevate memory abstractions for agents (MemGPT) to OS primitives for persistent, queryable context \cite{packer2023memgpt}.
+
+\paragraph{Illustrative scenario: calendars without chaos}
+Consider a device with three calendar apps. In today’s model, events fragment across silos. In the proposed architecture, all calendars read/write the system’s \texttt{CalendarEvent} type in the shared data plane; the OS deduplicates and resolves conflicts using declared merge rules; an LLM agent invokes the \texttt{schedule} intent through the registry and the OS chooses a provider per policy; SmartOS-style signals feed back user preferences (e.g., preferred venue, typical durations) to improve scheduling \cite{goodarzy2021smartos,he2024peros}. The user sees one coherent schedule; providers compete on value, not on data custody.
+
+\paragraph{Closing the gap}
+In short, the path forward is not merely “more AI inside the OS,” but “OS primitives that make AI—and apps—data-fluent, semantically unified, intent-centric, and safe.” The surveyed systems provide persuasive pieces of this puzzle \cite{zhang2024systematic,liu2021serviceos,hao2020linnos,bateni2020neuos,goodarzy2021smartos,kamath2024llamas,he2024peros,packer2023memgpt}. Turning them into a dependable, widely deployable stack will require disciplined semantics for data, capabilities, and intents; rigorous evaluation; and layered designs that let micro-models and macro-models cooperate without compromising correctness.
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{thebibliography}{99}
+
+\bibitem{zhang2024systematic}
+Y.~Zhang, X.~Zhao, J.~Yin, L.~Zhang, and Z.~Chen.
+\newblock Operating System and Artificial Intelligence: A Systematic Review.
+\newblock \emph{arXiv:2407.14567}, 2024.
+
+\bibitem{liu2021serviceos}
+X.~Liu, S.~Wang, Y.~Ma, Y.~Zhang, Q.~Mei, Y.~Liu, and G.~Huang.
+\newblock Operating Systems for Resource-adaptive Intelligent Software: Challenges and Opportunities.
+\newblock \emph{ACM Transactions on Internet Technology}, 21(2):Article 27, 2021.
+
+\bibitem{kamath2024llamas}
+A.~K.~Kamath and S.~Yadalam.
+\newblock Herding LLaMaS: Using LLMs as an OS Module.
+\newblock \emph{arXiv:2401.08908}, 2024.
+
+\bibitem{he2024peros}
+H.~H\`e.
+\newblock PerOS: Personalized Self-Adapting Operating Systems in the Cloud.
+\newblock \emph{arXiv:2404.00057}, 2024.
+
+\bibitem{packer2023memgpt}
+C.~Packer, V.~Fang, S.~G.~Patil, \emph{et al.}
+\newblock MemGPT: Towards LLMs as Operating Systems.
+\newblock \emph{arXiv:2310.08560}, 2023.
+
+\bibitem{hao2020linnos}
+M.~Hao, L.~Toks\"{o}z, N.~Li, \emph{et al.}
+\newblock LinnOS: Predictability on Unpredictable Flash Storage with a Light Neural Network.
+\newblock In \emph{OSDI'20}, 2020, pp.~173--190.
+
+\bibitem{bateni2020neuos}
+S.~Bateni and C.~Liu.
+\newblock NeuOS: A Latency-Predictable Multi-Dimensional Optimization Framework for DNN-driven Autonomous Systems.
+\newblock In \emph{USENIX ATC'20}, 2020, pp.~371--385.
+
+\bibitem{goodarzy2021smartos}
+S.~Goodarzy, M.~Nazari, R.~Han, E.~Keller, and E.~Rozner.
+\newblock SmartOS: Towards Automated Learning and User-Adaptive Resource Allocation in Operating Systems.
+\newblock In \emph{APSys'21}, 2021.
+
+\end{thebibliography}
+
+\end{document}
